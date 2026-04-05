@@ -1,3 +1,4 @@
+import asyncio
 import pytest
 from temporal.activities import (
     validate_input,
@@ -15,7 +16,7 @@ def test_validate_input_success():
         "recipient": "user@example.com"
     }
     
-    result = validate_input(input_data)
+    result = asyncio.run(validate_input(input_data))
     assert result["is_valid"] == True
     assert len(result["errors"]) == 0
 
@@ -26,7 +27,7 @@ def test_validate_input_missing_fields():
         # Missing quantity and jurisdiction
     }
     
-    result = validate_input(input_data)
+    result = asyncio.run(validate_input(input_data))
     assert result["is_valid"] == False
     assert len(result["errors"]) > 0
     assert any("quantity" in error for error in result["errors"])
@@ -40,20 +41,16 @@ def test_validate_input_invalid_quantity():
         "jurisdiction": "US-CA"
     }
     
-    result = validate_input(input_data)
+    result = asyncio.run(validate_input(input_data))
     assert result["is_valid"] == False
     assert any("greater than zero" in error for error in result["errors"])
 
 def test_fetch_market_price():
     """Test market price fetching."""
-    # This will raise an exception in the mock environment
-    # but we can test that it's properly structured
     try:
-        price = fetch_market_price("AAPL")
-        # If it doesn't raise an exception, it should return a float
+        price = asyncio.run(fetch_market_price("AAPL"))
         assert isinstance(price, float)
     except Exception as e:
-        # This is expected in test environment
         assert "Market price fetch failed" in str(e)
 
 def test_calculate_tax():
@@ -64,12 +61,11 @@ def test_calculate_tax():
     }
     
     try:
-        result = calculate_tax(tax_data)
+        result = asyncio.run(calculate_tax(tax_data))
         assert "tax_amount" in result
         assert "tax_rate" in result
         assert result["tax_rate"] == 0.085  # California rate
     except Exception as e:
-        # This is expected in test environment
         assert "Tax calculation failed" in str(e)
 
 def test_send_notification():
@@ -80,9 +76,8 @@ def test_send_notification():
     }
     
     try:
-        result = send_notification(notification_data)
+        result = asyncio.run(send_notification(notification_data))
         assert "sent" in result
         assert "recipient" in result
     except Exception as e:
-        # This is expected in test environment
         assert "Notification failed" in str(e)
