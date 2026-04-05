@@ -48,16 +48,28 @@ If step 3 fails (API timeout), Temporal retries up to 3× with exponential backo
 git clone https://github.com/MadameSir3n/agent-orchestration-playground.git
 cd agent-orchestration-playground
 pip install -r requirements.txt
+python main.py
+```
+
+Run tests:
+
+```bash
 python -m pytest tests/ -v
 ```
 
-Or with Docker:
+Or with Docker (includes Temporal server + monitoring dashboard):
 
 ```bash
 docker-compose up
 # Dashboard: http://localhost:3000
 # Temporal UI: http://localhost:8080
 ```
+
+## Known Limitations
+
+- Full workflow execution requires a running Temporal server (included in docker-compose)
+- Some components are still being refined
+- This is an active development system
 
 ## Sample Test Output
 
