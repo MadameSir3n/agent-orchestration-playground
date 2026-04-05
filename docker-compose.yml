@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  temporal:
+    image: temporalio/auto-setup:1.20.0
+    environment:
+      - TEMPORAL_CLI_ADDRESS=temporal:7233
+    ports:
+      - "7233:7233"  # gRPC
+      - "7234:7234"  # HTTP API
+      - "7235:7235"  # Metrics
+      - "7236:7236"  # gRPC (frontend)
+      - "7237:7237"  # HTTP (frontend)
+      - "7238:7238"  # gRPC (matching)
+      - "7239:7239"  # HTTP (matching)
+    volumes:
+      - temporal_data:/tmp/temporal
+
+  temporal-admin-tools:
+    image: temporalio/admin-tools:1.20.0
+    environment:
+      - TEMPORAL_CLI_ADDRESS=temporal:7233
+    depends_on:
+      - temporal
+    stdin_open: true
+    tty: true
+
+  mongo:
+    image: mongo:5.0
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    environment:
+      - TEMPORAL_HOST=temporal
+      - MONGO_HOST=mongo
+    depends_on:
+      - temporal
+      - mongo
+    volumes:
+      - ./temporal:/app/temporal
+      - ./agents:/app/agents
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile.dashboard
+    ports:
+      - "3000:3000"
+    environment:
+      - TEMPORAL_HOST=temporal
+      - MONGO_HOST=mongo
+    depends_on:
+      - temporal
+      - mongo
+    volumes:
+      - ./monitoring:/app/monitoring
+
+volumes:
+  temporal_data:
+  mongo_data:

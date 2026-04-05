@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agent Orchestration Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .header {
+            background: linear-gradient(135deg, #007bff, #0056b3);
+            color: white;
+            padding: 1rem 0;
+            margin-bottom: 2rem;
+        }
+        .metric-card {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            transition: transform 0.2s;
+        }
+        .metric-card:hover {
+            transform: translateY(-5px);
+        }
+        .metric-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #007bff;
+        }
+        .metric-label {
+            font-size: 0.9rem;
+            color: #6c757d;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .status-healthy { background-color: #28a745; }
+        .status-degraded { background-color: #ffc107; }
+        .status-unhealthy { background-color: #dc3545; }
+        .workflow-table tbody tr:hover {
+            background-color: #e9ecef;
+        }
+        .alert-warning {
+            border-left: 4px solid #ffc107;
+        }
+        .alert-error {
+            border-left: 4px solid #dc3545;
+        }
+        .chart-container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            padding: 1rem;
+            margin-bottom: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="container">
+            <h1>Agent Orchestration Dashboard</h1>
+            <p class="lead">Monitor and manage your automated workflows</p>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- System Health -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="metric-card">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h4>System Health</h4>
+                            <div id="health-status">Loading...</div>
+                        </div>
+                        <div id="health-indicator">
+                            <span class="status-indicator status-healthy"></span>
+                            Healthy
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Key Metrics -->
+        <div class="row">
+            <div class="col-md-3">
+                <div class="metric-card text-center">
+                    <div class="metric-value" id="total-workflows">0</div>
+                    <div class="metric-label">Total Workflows</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="metric-card text-center">
+                    <div class="metric-value" id="success-rate">0%</div>
+                    <div class="metric-label">Success Rate</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="metric-card text-center">
+                    <div class="metric-value" id="avg-duration">0s</div>
+                    <div class="metric-label">Avg Duration</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="metric-card text-center">
+                    <div class="metric-value" id="active-workflows">0</div>
+                    <div class="metric-label">Active Workflows</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="row mt-4">
+            <div class="col-md-8">
+                <div class="chart-container">
+                    <h5>Workflow Success Rate Over Time</h5>
+                    <canvas id="successChart"></canvas>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="chart-container">
+                    <h5>Workflow Status Distribution</h5>
+                    <canvas id="statusChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Workflows -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="metric-card">
+                    <h4>Recent Workflows</h4>
+                    <div class="table-responsive">
+                        <table class="table workflow-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Status</th>
+                                    <th>Duration</th>
+                                    <th>Retries</th>
+                                    <th>Started</th>
+                                </tr>
+                            </thead>
+                            <tbody id="workflows-table">
+                                <tr>
+                                    <td colspan="5" class="text-center">Loading...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Alerts -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="metric-card">
+                    <h4>System Alerts</h4>
+                    <div id="alerts-container">
+                        <div class="alert alert-info">Loading alerts...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables for charts
+        let successChart, statusChart;
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize charts
+            initCharts();
+            
+            // Load data
+            loadMetrics();
+            loadWorkflows();
+            loadAlerts();
+            loadSystemHealth();
+            
+            // Refresh data every 30 seconds
+            setInterval(() => {
+                loadMetrics();
+                loadWorkflows();
+                loadAlerts();
+                loadSystemHealth();
+            }, 30000);
+        });
+
+        function initCharts() {
+            // Success rate chart
+            const successCtx = document.getElementById('successChart').getContext('2d');
+            successChart = new Chart(successCtx, {
+                type: 'line',
+                data: {
+                    labels: ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00'],
+                    datasets: [{
+                        label: 'Success Rate',
+                        data: [98.5, 99.2, 97.8, 99.5, 98.9, 99.1],
+                        borderColor: '#28a745',
+                        backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            min: 95,
+                            max: 100
+                        }
+                    }
+                }
+            });
+
+            // Status distribution chart
+            const statusCtx = document.getElementById('statusChart').getContext('2d');
+            statusChart = new Chart(statusCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Success', 'Failed', 'Retried'],
+                    datasets: [{
+                        data: [85, 5, 10],
+                        backgroundColor: ['#28a745', '#dc3545', '#ffc107']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+
+        async function loadMetrics() {
+            try {
+                const response = await fetch('/api/metrics');
+                const metrics = await response.json();
+                
+                document.getElementById('total-workflows').textContent = metrics.total_workflows;
+                document.getElementById('success-rate').textContent = 
+                    ((metrics.successful_workflows / Math.max(metrics.total_workflows, 1)) * 100).toFixed(1) + '%';
+                document.getElementById('avg-duration').textContent = metrics.average_duration + 's';
+            } catch (error) {
+                console.error('Error loading metrics:', error);
+            }
+        }
+
+        async function loadWorkflows() {
+            try {
+                const response = await fetch('/api/workflows');
+                const workflows = await response.json();
+                
+                const tbody = document.getElementById('workflows-table');
+                tbody.innerHTML = '';
+                
+                workflows.slice(0, 10).forEach(workflow => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${workflow.id}</td>
+                        <td><span class="badge bg-${workflow.status === 'success' ? 'success' : 'danger'}">${workflow.status}</span></td>
+                        <td>${workflow.duration}s</td>
+                        <td>${workflow.retries}</td>
+                        <td>${new Date(workflow.start_time).toLocaleTimeString()}</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            } catch (error) {
+                console.error('Error loading workflows:', error);
+            }
+        }
+
+        async function loadAlerts() {
+            try {
+                const response = await fetch('/api/alerts');
+                const alerts = await response.json();
+                
+                const container = document.getElementById('alerts-container');
+                container.innerHTML = '';
+                
+                if (alerts.length === 0) {
+                    container.innerHTML = '<div class="alert alert-success">No active alerts</div>';
+                    return;
+                }
+                
+                alerts.forEach(alert => {
+                    const alertDiv = document.createElement('div');
+                    alertDiv.className = `alert alert-${alert.level === 'warning' ? 'warning' : 'danger'}`;
+                    alertDiv.innerHTML = `
+                        <strong>${alert.level.toUpperCase()}:</strong> ${alert.message}
+                        <small class="float-end">${new Date(alert.timestamp).toLocaleString()}</small>
+                    `;
+                    container.appendChild(alertDiv);
+                });
+            } catch (error) {
+                console.error('Error loading alerts:', error);
+            }
+        }
+
+        async function loadSystemHealth() {
+            try {
+                const response = await fetch('/api/system-health');
+                const health = await response.json();
+                
+                const healthStatus = document.getElementById('health-status');
+                const healthIndicator = document.getElementById('health-indicator');
+                
+                healthStatus.innerHTML = `
+                    Uptime: ${health.uptime} | 
+                    Latency: ${health.latency_avg} | 
+                    Last Updated: ${new Date(health.last_updated).toLocaleTimeString()}
+                `;
+                
+                // Update health indicator
+                healthIndicator.innerHTML = `
+                    <span class="status-indicator status-${health.status}"></span>
+                    ${health.status.charAt(0).toUpperCase() + health.status.slice(1)}
+                `;
+            } catch (error) {
+                console.error('Error loading system health:', error);
+            }
+        }
+    </script>
+</body>
+</html>
