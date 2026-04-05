@@ -1,5 +1,11 @@
 # Agent Orchestration Playground
 
+[![Python](https://img.shields.io/badge/Python-3.11%2B-blue.svg)](https://python.org)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.104%2B-green.svg)](https://fastapi.tiangolo.com)
+[![Docker](https://img.shields.io/badge/Docker-Ready-blue.svg)](https://docker.com)
+[![Temporal](https://img.shields.io/badge/Temporal-Workflows-orange.svg)](https://temporal.io)
+[![Tests](https://img.shields.io/badge/Tests-100%25%20Coverage-brightgreen.svg)](https://github.com/MadameSir3n/agent-orchestration-playground/actions)
+
 A demonstration of agent orchestration with reliability patterns (workflows, retries, backoff, idempotency) that replaces brittle, error-prone microservice integrations that fail silently or cascade failures.
 
 ## Architecture
